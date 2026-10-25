@@ -739,8 +739,8 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 /// Write newly tracked paths as Mask Path keyframes (one merged undo step per tracking job) and
-/// drop finished jobs. Called from [`Session::poll_persistence`] (once per UI frame) and after
-/// synchronous runs.
+/// drop finished jobs. Called from [`Session::poll_persistence`] (once per UI frame), before each
+/// top-level [`Session::execute`] (headless sessions) and after synchronous runs.
 pub fn poll(s: &mut Session) {
     use std::sync::atomic::Ordering;
     let mut i = 0;

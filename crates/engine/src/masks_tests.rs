@@ -435,3 +435,27 @@ fn move_vertex_moves_a_list_of_vertices_together() {
     s.undo();
     assert_eq!(pts(&mut s), before);
 }
+
+#[test]
+fn background_tracking_is_applied_without_a_ui_frame_loop() {
+    // headless sessions (CLI, MCP) never call `poll_persistence`: commands alone must apply the job (#3302)
+    let (mut s, _) = tracking_session();
+    let c = truth(0.0).apply(filmcraft_geom::Vec2::ZERO);
+    s.execute("masks.add", json!({"effect": "opacity", "shape": "ellipse", "center": [c.x, c.y], "size": [90, 90]})).unwrap();
+    let r = s.execute("masks.track", json!({"direction": "forward", "frames": 6})).unwrap();
+    let job = r["job"].clone();
+    let t0 = std::time::Instant::now();
+    loop {
+        let jobs = s.execute("jobs.list", json!({})).unwrap();
+        let done = jobs.as_array().unwrap().iter().any(|j| j["id"] == job && j["finished"] == true);
+        if done || t0.elapsed().as_secs() > 60 {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let l = s.execute("masks.list", json!({})).unwrap();
+    let keys = l["masks"][0]["pathKeyframes"].as_array().unwrap().len();
+    assert_eq!(keys, 7, "{l}");
+    assert!(s.mask_jobs.is_empty());
+    s.execute("masks.track", json!({"direction": "forward", "frames": 2, "wait": true})).unwrap();
+}
