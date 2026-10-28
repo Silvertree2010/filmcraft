@@ -454,6 +454,16 @@ const MIN_FRAMES: usize = 64;
 /// reserve above into an unbounded number of full-resolution copies.
 const FRAME_CACHE_CEILING: usize = 384 << 20;
 
+/// The cache always has room for this many frames, whatever their size, up to
+/// [`LARGE_FRAME_CEILING`]: the pictures a hardware decoder has in flight plus the frames playback
+/// prefetches. With fewer, frames decoded ahead of the playhead are evicted before they are
+/// shown and each request restarts the decoder at the keyframe (an 8K frame is 50 MB, and
+/// [`FRAME_CACHE_CEILING`] alone holds 7 of them).
+const PLAYBACK_FRAMES: usize = 16;
+
+/// The most decoded pixels a source cache retains for [`PLAYBACK_FRAMES`] of large frames.
+const LARGE_FRAME_CEILING: usize = 1 << 30;
+
 /// A running decoder up to this many samples before the wanted sample's sync sample keeps going
 /// rather than restarting at the sync sample.
 const CONTINUE_THROUGH: usize = 48;
@@ -570,10 +580,12 @@ impl GopCache {
         self.store_finished(st, pts, self.finish(f), draft);
     }
 
-    /// The small-frame reserve may use the configured cache budget, but may never enlarge it.
+    /// The small-frame reserve may use the configured cache budget, but may never enlarge it;
+    /// large frames keep room for [`PLAYBACK_FRAMES`] of them, up to [`LARGE_FRAME_CEILING`].
     fn cache_budget(&self, frame_bytes: usize) -> usize {
         let reserve = MIN_FRAMES.saturating_mul(frame_bytes).min(FRAME_CACHE_CEILING);
-        self.budget.min(FRAME_CACHE_CEILING).max(reserve)
+        let playback = PLAYBACK_FRAMES.saturating_mul(frame_bytes).min(LARGE_FRAME_CEILING);
+        self.budget.min(FRAME_CACHE_CEILING).max(reserve).max(playback)
     }
 
     /// Cache a frame [`Self::finish`] has been applied to.

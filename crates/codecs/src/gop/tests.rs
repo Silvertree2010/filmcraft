@@ -584,10 +584,21 @@ fn large_frames_cannot_enlarge_the_gop_cache_ceiling() {
     let mut c = GopCache::new(None);
     c.budget = usize::MAX;
     assert_eq!(c.cache_budget(1), FRAME_CACHE_CEILING);
-    assert_eq!(c.cache_budget(FRAME_CACHE_CEILING), FRAME_CACHE_CEILING);
+    assert_eq!(c.cache_budget(FRAME_CACHE_CEILING), LARGE_FRAME_CEILING);
+    assert_eq!(c.cache_budget(usize::MAX), LARGE_FRAME_CEILING);
     c.budget = 0;
     assert_eq!(c.cache_budget(4), MIN_FRAMES * 4, "small frames retain the playback reserve");
-    assert_eq!(c.cache_budget(FRAME_CACHE_CEILING), FRAME_CACHE_CEILING, "large frames are capped instead of reserving 64 copies");
+    assert_eq!(c.cache_budget(FRAME_CACHE_CEILING), LARGE_FRAME_CEILING, "large frames are capped instead of reserving 64 copies");
+}
+
+#[test]
+fn an_8k_cache_has_room_for_the_frames_playback_keeps_ahead() {
+    let c = GopCache::new(None);
+    // 7680x4320 8-bit 4:2:0
+    let frame = 7680 * 4320 * 3 / 2;
+    assert!(c.cache_budget(frame) >= PLAYBACK_FRAMES * frame, "{} MB for 8K frames", c.cache_budget(frame) >> 20);
+    // up to 4K the ceiling still decides
+    assert_eq!(c.cache_budget(3840 * 2160 * 3 / 2), FRAME_CACHE_CEILING);
 }
 
 #[test]
