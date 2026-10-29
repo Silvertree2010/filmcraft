@@ -62,6 +62,7 @@ const SPECS: &[Spec] = &[
     Spec { name: "a2160.mp4", src: "testsrc2=s=3840x2160:r=24000/1001:d=10,noise=alls=6:allf=t", secs: 10, audio: false, codec: X264 },
     Spec { name: "hevc2160.mp4", src: "testsrc2=s=3840x2160:r=24000/1001:d=10,noise=alls=6:allf=t", secs: 10, audio: false, codec: X265 },
     Spec { name: "hevc4320.mp4", src: "testsrc2=s=7680x4320:r=24000/1001:d=6,noise=alls=6:allf=t", secs: 6, audio: false, codec: X265 },
+    Spec { name: "hevc10_4320.mp4", src: "testsrc2=s=7680x4320:r=24000/1001:d=6,noise=alls=6:allf=t", secs: 6, audio: false, codec: X265_MAIN10 },
     Spec { name: "vp92160.webm", src: "testsrc2=s=3840x2160:r=24000/1001:d=10,noise=alls=6:allf=t", secs: 10, audio: false, codec: VP9 },
     Spec { name: "av12160.mp4", src: "testsrc2=s=3840x2160:r=24000/1001:d=10,noise=alls=6:allf=t", secs: 10, audio: false, codec: AV1 },
     // Decode-speed matrix: 1080p (5 s) and 2160p (3 s) per codec, same picture content (ProRes
