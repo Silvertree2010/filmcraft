@@ -432,6 +432,9 @@ pub struct Session {
     pub history: History,
     pub revision: u64,
     pub saved_revision: u64,
+    /// Bumped whenever the whole project is replaced (new, open, recover, close…); background jobs
+    /// started on an older document are dropped instead of writing into the new one.
+    pub document_epoch: u64,
     pub path: Option<String>,
     pub state: EditorState,
     pub media: Arc<MediaPool>,
@@ -550,6 +553,7 @@ impl Session {
             history: History { limit: 200, ..Default::default() },
             revision: 1,
             saved_revision: 1,
+            document_epoch: 0,
             path: None,
             state: EditorState {
                 snapping: true,

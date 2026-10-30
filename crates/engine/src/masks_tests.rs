@@ -487,3 +487,33 @@ fn replacing_the_project_drops_pending_tracking_jobs() {
     let j = jobs.as_array().unwrap().iter().find(|j| j["id"] == job).unwrap().clone();
     assert!(j["cancelled"] == true || j["finished"] == true, "{j}");
 }
+
+#[test]
+fn every_project_replacing_path_drops_pending_tracking_jobs() {
+    // the epoch check covers paths that never call `discard_jobs`: recover (`install_project`), demo, close, template
+    let tpl = std::env::temp_dir().join(format!("filmcraft-mask-epoch-{}.fcproj", std::process::id())).to_string_lossy().to_string();
+    for path in ["recover", "demo", "close", "template"] {
+        let (mut s, _) = tracking_session();
+        s.execute("file.saveAsTemplate", json!({"path": tpl})).unwrap();
+        let c = truth(0.0).apply(filmcraft_geom::Vec2::ZERO);
+        s.execute("masks.add", json!({"effect": "opacity", "shape": "ellipse", "center": [c.x, c.y], "size": [90, 90]})).unwrap();
+        s.execute("masks.track", json!({"direction": "forward"})).unwrap();
+        assert_eq!(s.mask_jobs.len(), 1);
+        match path {
+            "recover" => crate::commands::install_project(&mut s, filmcraft_project::Project::new("Recovered"), None, false),
+            "demo" => drop(s.execute("file.openDemoProject", json!({})).unwrap()),
+            "close" => drop(s.execute("file.closeProject", json!({"force": true})).unwrap()),
+            _ => drop(s.execute("file.newProjectFromTemplate", json!({"template": tpl, "force": true})).unwrap()),
+        }
+        for _ in 0..20 {
+            s.poll_persistence();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(s.mask_jobs.is_empty(), "stale job survived {path}");
+        let h = s.execute("history.list", json!({})).unwrap();
+        assert!(!h["undo"].as_array().unwrap().iter().any(|v| v == "Track Mask"), "{path}: {h}");
+        let project = serde_json::to_string(&*s.project).unwrap();
+        assert!(!project.contains("pathKeyframes") && !project.to_lowercase().contains("\"masks\":[{"), "{path}: stale mask data");
+    }
+    let _ = std::fs::remove_file(&tpl);
+}
